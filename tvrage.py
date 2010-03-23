@@ -20,7 +20,8 @@ def GetShowByName(showName):
   results = Search(showName)
 
   if results:
-    return GetShowByID(results[0].ID)
+    result = results[0]
+    return GetShowByID(result.ID)
   else:
     return None
 
@@ -30,15 +31,12 @@ def GetShowByID(showID):
   Returns the full information (Show object) or None if the ID is invalid.
   """
   # tvrage provides no/inconsistent error-reporting so we must try/except
-  try:
-    url = URL_SHOWINFO % {'id':showID}
-    uf = urllib.urlopen(url)
-    xml = uf.read()
-    xShow = fromstring(xml)
-    return Show(xShow)
-  except:
-    return None
-  
+  url = URL_SHOWINFO % {'id':showID}
+  uf = urllib.urlopen(url)
+  xml = uf.read()
+  xShow = fromstring(xml)
+  return Show(xShow)
+
 def Search(query):
   """
   Searches for a show based on a given query (the show name).
@@ -69,15 +67,8 @@ class Show(object):
     self.Name = element.findtext("name")
     self.Link = URL_TVRAGE_ROOT + element.findtext("showlink")
     self.Country = element.findtext("origin_country")
-    
-    started = element.findtext("started")
-    if started:
-      self.Started = strptime(started, DATE_SHOW)
-
-    ended = element.findtext("ended")
-    if ended:
-      self.Ended = strptime(ended, DATE_SHOW)
-
+    self.Started = element.findtext("started")
+    self.Ended = element.findtext("ended")
     self.Image = URL_TVRAGE_ROOT + element.findtext("image")
     self.Seasons = element.findtext("seasons")
     self.Status = element.findtext("status")
@@ -97,17 +88,19 @@ class Show(object):
 
     self.Episodes = []
 
-    seasons = element.find("Episodelist").findall("Season")
+    xEpisodelist = element.find("Episodelist")
+
+    seasons = xEpisodelist.findall("Season")
 
     for season in seasons:
       seasonnum = season.get('no')
       for episode in season.findall('episode'):
-        self.Episodes.append(Episode(episode, seasonnum, false))
+        self.Episodes.append(Episode(episode, seasonnum, False))
 
-    specials = element.find("Episodelist").findall("Special")
+    specials = xEpisodelist.find("Special").findall("episode")
 
-    for special in specials:
-      self.Episodes.append(Episode(special, special.findtext("season"), true))
+    for episode in specials:
+      self.Episodes.append(Episode(episode, episode.findtext("season"), True))
 
 class Episode(object):
   
@@ -118,18 +111,24 @@ class Episode(object):
     if not special:
       self.EpisodeNumber = element.findtext("seasonnum")
     else:
-      self.EpisodeNumber = 0
+      self.EpisodeNumber = "0"
       
     self.TotalEpisodeNumber = element.findtext("epnum")
     self.ProductionNumber = element.findtext("prodnum")
 
     airdate = element.findtext("airdate")
     if airdate:
-      self.AirDate = strptime(element.findtext("airdate"), DATE_EPISODE)
+      self.AirDate = datetime.strptime(element.findtext("airdate"), DATE_EPISODE)
 
-    self.Link = URL_TVRAGE_ROOT + element.findtext("link")
+    link = element.findtext("link")
+    if link:
+      self.Link = URL_TVRAGE_ROOT + link
+      
     self.Title = element.findtext("title")
-    self.ScreenCap = URL_TVRAGE_ROOT + element.findtext("screencap")
+
+    screencap = element.findtext("screencap")
+    if screencap:
+      self.ScreenCap = URL_TVRAGE_ROOT + screencap
 
 class SearchResult(object):
   
@@ -138,15 +137,8 @@ class SearchResult(object):
     self.Name = element.findtext("name")
     self.Link = URL_TVRAGE_ROOT + element.findtext("link")
     self.Country = element.findtext("country")
-
-    started = element.findtext("started")
-    if started:
-      self.Started = strptime(started, DATE_SHOW)
-
-    ended = element.findtext("ended")
-    if ended:
-      self.Ended = strptime(ended, DATE_SHOW)
-
+    self.Started = element.findtext("started")
+    self.Ended = element.findtext("ended")
     self.Seasons = element.findtext("seasons")
     self.Status = element.findtext("status")
     self.Class = element.findtext("classification")
@@ -154,19 +146,3 @@ class SearchResult(object):
 
 if __name__ == "__main__":
     show = GetShowByName("lost")
-    print show.ID
-    print show.Name
-    print show.Link
-    print show.Country
-    print show.Started
-    print show.Ended
-    print show.Seasons
-    print show.Status
-    print show.Class
-    print show.Genres
-    print show.Runtime
-    print show.Network
-    print show.AirTime
-    print show.AirDay
-    print show.TimeZone
-    print show.AKA
